@@ -17,13 +17,15 @@ namespace Dashboard.ConsoleApp
 
             Console.WriteLine("Starting market data consumer...");
             var marketDataConsumer = new ArtemisConsumer(artemisSettings!);
-            var t1 = marketDataConsumer.StartConsume(artemisSettings!.MarketDataTopic, Handle, cts.Token);
+            await marketDataConsumer.StartConsume(artemisSettings!.MarketDataTopic, Handle, cts.Token);
 
+            /*
             Console.WriteLine("Starting trades consumer...");
             var tradesConsumer = new ArtemisConsumer(artemisSettings!);
             var t2 = tradesConsumer.StartConsume(artemisSettings!.TradesTopic, Handle, cts.Token);
 
             await Task.WhenAll(t1, t2);
+            */
         }
 
         private static Task Handle(string message, IDictionary<string, string> props, CancellationToken cancellationToken)

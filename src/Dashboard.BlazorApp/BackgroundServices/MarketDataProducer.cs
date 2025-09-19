@@ -36,7 +36,7 @@ namespace Dashboard.BlazorApp.BackgroundServices
                     { "Type" , message.GetType().Name }
                 };
 
-                producer.Produce(topic, JsonSerializer.Serialize(message));
+                producer.Produce(topic, JsonSerializer.Serialize(message), props);
 
                 await Task.Delay(3000);
             }

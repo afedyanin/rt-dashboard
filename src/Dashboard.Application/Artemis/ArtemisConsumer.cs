@@ -23,7 +23,7 @@ namespace Dashboard.Application.Artemis
             _connectionFactory = new ConnectionFactory(_settings.ConnectUriString);
         }
 
-        public Task StartConsume(
+        public async Task StartConsume(
             string topic, 
             Func<string, IDictionary<string, string>, CancellationToken, Task> handler,
             CancellationToken cancellationToken)
@@ -40,35 +40,27 @@ namespace Dashboard.Application.Artemis
             using var consumer = session.CreateConsumer(destination);
 
 
-            _consumingTask = Task.Run(async () =>
+            while (!cancellationToken.IsCancellationRequested)
             {
-                while (!cancellationToken.IsCancellationRequested)
+                // TODO: Should restart wait after timeout
+                var message = (ITextMessage)consumer.Receive();
+
+                if (message == null)
                 {
-                    // TODO: Should restart wait after timeout
-                    var message = (ITextMessage)consumer.Receive();
-
-                    if (message == null)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        var props = new Dictionary<string, string>();
-
-                        foreach (string propKey in message.Properties.Keys)
-                        {
-                            if (message.Properties[propKey] is string value)
-                            {
-                                props[propKey] = value;
-                            }
-                        }
-
-                        await handler.Invoke(message.Text, props, cancellationToken);
-                    }
+                    continue;
                 }
-            }, cancellationToken);
+                else
+                {
+                    var props = new Dictionary<string, string>();
 
-            return _consumingTask;
+                    foreach (string propKey in message.Properties.Keys)
+                    {
+                        props[propKey] = message.Properties[propKey]?.ToString() ?? "";
+                    }
+
+                    await handler.Invoke(message.Text, props, cancellationToken);
+                }
+            }
         }
     }
 }
