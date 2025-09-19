@@ -11,7 +11,6 @@ public class StocksHub : Hub
     private readonly IStockTickerObservable _stockTickerObservable;
     private readonly IStockTickerDataHandler _stockTickerDataHandler;
 
-
     private readonly Dictionary<string, StockModel> _stocks;
 
     public StocksHub(
@@ -46,11 +45,13 @@ public class StocksHub : Hub
 
     public override Task OnConnectedAsync()
     {
+        Console.WriteLine("Connected!");
         return base.OnConnectedAsync();
     }
 
     public override Task OnDisconnectedAsync(Exception? exception)
     {
+        Console.WriteLine($"Disconnected! Ex={exception?.Message}");
         return base.OnDisconnectedAsync(exception);
     }
 

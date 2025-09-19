@@ -27,9 +27,10 @@ namespace Dashboard.BlazorApp
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
+
             builder.Services.AddFluentUIComponents();
 
-            builder.Services.AddHttpClient("backend", client => client.BaseAddress = new Uri("https://localhost:7085"));
+            builder.Services.AddHttpClient("backend", client => client.BaseAddress = new Uri("https://localhost:7086"));
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();

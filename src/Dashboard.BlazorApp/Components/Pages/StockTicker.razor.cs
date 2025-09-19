@@ -7,9 +7,7 @@ namespace Dashboard.BlazorApp.Components.Pages;
 public partial class StockTicker : IAsyncDisposable
 {
     private FluentDataGrid<StockModel> dataGrid;
-
     private TemplateColumn<StockModel> templateColumn;
-
     private HubConnection _hubConnection;
 
     private bool _isConnected =>
@@ -35,22 +33,16 @@ public partial class StockTicker : IAsyncDisposable
 
         await _hubConnection.StartAsync();
         
-        Console.WriteLine("Hub connection started!");
-
         await base.OnInitializedAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Console.WriteLine($"OnAfterRenderAsync starting...");
 
         if (firstRender)
         {
-            Console.WriteLine($"OnAfterRenderAsync: First render. Hub connection state {_hubConnection.State}");
-            
             _stocksDict = await InitStocks();
-
-            // await StartStreaming();
+            await StartStreaming();
         }
 
         await base.OnAfterRenderAsync(firstRender);
