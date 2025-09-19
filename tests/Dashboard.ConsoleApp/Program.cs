@@ -1,5 +1,7 @@
 ﻿using Dashboard.Application.Artemis;
+using Dashboard.Common.Messages;
 using Microsoft.Extensions.Configuration;
+using System.Text.Json;
 
 namespace Dashboard.ConsoleApp
 {
@@ -17,29 +19,40 @@ namespace Dashboard.ConsoleApp
 
             Console.WriteLine("Starting market data consumer...");
             var marketDataConsumer = new ArtemisConsumer(artemisSettings!);
-            await marketDataConsumer.StartConsume(artemisSettings!.MarketDataTopic, Handle, cts.Token);
+            var t1 = marketDataConsumer.StartConsume(artemisSettings!.MarketDataTopic, Handle, cts.Token);
 
-            /*
             Console.WriteLine("Starting trades consumer...");
             var tradesConsumer = new ArtemisConsumer(artemisSettings!);
             var t2 = tradesConsumer.StartConsume(artemisSettings!.TradesTopic, Handle, cts.Token);
 
             await Task.WhenAll(t1, t2);
-            */
         }
 
         private static Task Handle(string message, IDictionary<string, string> props, CancellationToken cancellationToken)
         {
-            Console.WriteLine($"Message: {message}");
+            // Console.WriteLine($"Message: {message}");
 
-            if (props.Keys.Any())
+            if (!props.TryGetValue("Type", out var messageType))
             {
-                foreach (var kvp in props)
-                {
-                    Console.WriteLine($"Prop: {kvp.Key}={kvp.Value}");
-                }
+                Console.WriteLine("Unknown message received!");
+                return Task.CompletedTask;
             }
 
+            if (messageType.Equals(typeof(MarketDataEvent).Name))
+            {
+                var marketData = JsonSerializer.Deserialize<MarketDataEvent>(message);
+                Console.WriteLine($"Market Data: {marketData}");
+                return Task.CompletedTask;
+            }
+
+            if (messageType.Equals(typeof(TradeEvent).Name))
+            {
+                var trade = JsonSerializer.Deserialize<TradeEvent>(message);
+                Console.WriteLine($"Trade: {trade}");
+                return Task.CompletedTask;
+            }
+
+            Console.WriteLine($"Unknown message type received: {messageType}");
             return Task.CompletedTask;
         }
     }

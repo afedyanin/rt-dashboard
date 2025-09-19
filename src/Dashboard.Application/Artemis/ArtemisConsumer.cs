@@ -7,15 +7,13 @@ namespace Dashboard.Application.Artemis
 {
     public class ArtemisConsumer
     {
-        private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan _timeout = TimeSpan.FromMilliseconds(100);
 
         private readonly ArtemisSettings _settings;
 
         private readonly ConnectionFactory _connectionFactory;
 
         private IConnection? _connection;
-
-        private Task _consumingTask;
 
         public ArtemisConsumer(ArtemisSettings settings)
         {
@@ -28,7 +26,7 @@ namespace Dashboard.Application.Artemis
             Func<string, IDictionary<string, string>, CancellationToken, Task> handler,
             CancellationToken cancellationToken)
         {
-            // TODO: Use lock fot thread safe
+            // TODO: not thread safe!
             if (_connection == null)
             {
                 _connection = _connectionFactory.CreateConnection(_settings.UserName, _settings.Password);
@@ -42,24 +40,22 @@ namespace Dashboard.Application.Artemis
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                // TODO: Should restart wait after timeout
-                var message = (ITextMessage)consumer.Receive();
+                var message = (ITextMessage) consumer.ReceiveNoWait();
 
                 if (message == null)
                 {
+                    await Task.Delay(_timeout, cancellationToken);
                     continue;
                 }
-                else
+
+                var props = new Dictionary<string, string>();
+
+                foreach (string propKey in message.Properties.Keys)
                 {
-                    var props = new Dictionary<string, string>();
-
-                    foreach (string propKey in message.Properties.Keys)
-                    {
-                        props[propKey] = message.Properties[propKey]?.ToString() ?? "";
-                    }
-
-                    await handler.Invoke(message.Text, props, cancellationToken);
+                    props[propKey] = message.Properties[propKey]?.ToString() ?? "";
                 }
+
+                await handler.Invoke(message.Text, props, cancellationToken);
             }
         }
     }
