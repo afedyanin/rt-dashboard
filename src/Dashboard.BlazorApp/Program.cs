@@ -1,3 +1,4 @@
+using Dashboard.Application.Artemis;
 using Dashboard.Application.Jobs;
 using Dashboard.Application.Mediator;
 using Dashboard.BlazorApp.BackgroundServices;
@@ -5,7 +6,6 @@ using Dashboard.BlazorApp.Components;
 using Dashboard.BlazorApp.Hubs;
 using Dashboard.BlazorApp.StockTicker;
 using Hangfire;
-using Microsoft.Extensions.Configuration;
 using Microsoft.FluentUI.AspNetCore.Components;
 using System.Text.Json.Serialization;
 
@@ -35,8 +35,10 @@ namespace Dashboard.BlazorApp
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            builder.Services.AddHostedService<MarketDataProducer>();
+            builder.Services.AddHostedService<TradesProducer>();
+
             // Hubs
-            builder.Services.AddHostedService<StockPricesUpdatingService>();
             builder.Services.AddSingleton<StockTickerSubject>();
             builder.Services.AddSingleton<IStockTickerObservable>(x => x.GetRequiredService<StockTickerSubject>());
             builder.Services.AddSingleton<IStockTickerDataHandler>(x => x.GetRequiredService<StockTickerSubject>());
@@ -48,6 +50,11 @@ namespace Dashboard.BlazorApp
             var configuration = builder.Configuration;
             var hfConnectionString = configuration.GetConnectionString(_hangfireConnStringName);
             builder.Services.AddHangfire(hfConnectionString!);
+
+            // Producers
+            builder.Services.Configure<ArtemisSettings>(builder.Configuration.GetSection("ArtemisSettings"));
+            builder.Services.AddHostedService<MarketDataProducer>();
+            builder.Services.AddHostedService<TradesProducer>();
 
             builder.Services.AddSignalR();
 

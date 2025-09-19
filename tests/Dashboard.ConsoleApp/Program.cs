@@ -1,39 +1,44 @@
-﻿using Apache.NMS;
-using Apache.NMS.ActiveMQ;
-using Apache.NMS.Util;
+﻿using Dashboard.Application.Artemis;
+using Microsoft.Extensions.Configuration;
 
 namespace Dashboard.ConsoleApp
 {
     internal class Program
     {
-        private static readonly Uri connectUri = new Uri("activemq:tcp://localhost:61616");
-        private static readonly string _username = "artemis";
-        private static readonly string _password = "test";
-
-        private static TimeSpan _timeout = TimeSpan.FromSeconds(10);
-
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            var factory = new ConnectionFactory(connectUri);
-            using var connection = factory.CreateConnection(_username, _password);
-            using var session = connection.CreateSession();
-            // var destination = SessionUtil.GetDestination(session, "topic://FOO.BAR");
-            var destination = SessionUtil.GetDestination(session, "queue://FOO.BAR");
-            using var producer = session.CreateProducer(destination);
+            var builder = new ConfigurationBuilder()
+                            .SetBasePath(Directory.GetCurrentDirectory())
+                            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-            connection.Start();
-            producer.DeliveryMode = MsgDeliveryMode.Persistent;
-            producer.RequestTimeout = _timeout;
+            var config = builder.Build();
+            var artemisSettings = config.GetSection("ArtemisSettings").Get<ArtemisSettings>();
+            var cts = new CancellationTokenSource();
 
-            for (int i = 0; i < 10; i++)
+            Console.WriteLine("Starting market data consumer...");
+            var marketDataConsumer = new ArtemisConsumer(artemisSettings!);
+            var t1 = marketDataConsumer.StartConsume(artemisSettings!.MarketDataTopic, Handle, cts.Token);
+
+            Console.WriteLine("Starting trades consumer...");
+            var tradesConsumer = new ArtemisConsumer(artemisSettings!);
+            var t2 = tradesConsumer.StartConsume(artemisSettings!.TradesTopic, Handle, cts.Token);
+
+            await Task.WhenAll(t1, t2);
+        }
+
+        private static Task Handle(string message, IDictionary<string, string> props, CancellationToken cancellationToken)
+        {
+            Console.WriteLine($"Message: {message}");
+
+            if (props.Keys.Any())
             {
-                var request = session.CreateTextMessage($"Hello World! #{i}");
-                request.NMSCorrelationID = "abc";
-                request.Properties["NMSXGroupID"] = "cheese";
-                request.Properties["myHeader"] = "Cheddar";
-
-                producer.Send(request);
+                foreach (var kvp in props)
+                {
+                    Console.WriteLine($"Prop: {kvp.Key}={kvp.Value}");
+                }
             }
+
+            return Task.CompletedTask;
         }
     }
 }
