@@ -38,7 +38,7 @@ namespace Dashboard.BlazorApp.BackgroundServices
 
                 producer.Produce(topic, JsonSerializer.Serialize(message), props);
 
-                await Task.Delay(3000);
+                await Task.Delay(1000);
             }
         }
     }

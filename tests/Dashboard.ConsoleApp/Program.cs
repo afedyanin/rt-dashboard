@@ -1,7 +1,7 @@
 ﻿using Dashboard.Application.Artemis;
+using Dashboard.Application.MessageQueue;
 using Dashboard.Common.Messages;
 using Microsoft.Extensions.Configuration;
-using System.Text.Json;
 
 namespace Dashboard.ConsoleApp
 {
@@ -16,44 +16,34 @@ namespace Dashboard.ConsoleApp
             var config = builder.Build();
             var artemisSettings = config.GetSection("ArtemisSettings").Get<ArtemisSettings>();
             var cts = new CancellationTokenSource();
+            var queue = new DashboardMessageQueue();
 
             Console.WriteLine("Starting market data consumer...");
-            var marketDataConsumer = new ArtemisConsumer(artemisSettings!);
-            var t1 = marketDataConsumer.StartConsume(artemisSettings!.MarketDataTopic, Handle, cts.Token);
+            var marketDataConsumer = new ArtemisDashboardConsumer(queue, artemisSettings!);
+            var t1 = marketDataConsumer.StartConsume(artemisSettings!.MarketDataTopic, cts.Token);
 
             Console.WriteLine("Starting trades consumer...");
-            var tradesConsumer = new ArtemisConsumer(artemisSettings!);
-            var t2 = tradesConsumer.StartConsume(artemisSettings!.TradesTopic, Handle, cts.Token);
+            var tradesConsumer = new ArtemisDashboardConsumer(queue, artemisSettings!);
+            var t2 = tradesConsumer.StartConsume(artemisSettings!.TradesTopic, cts.Token);
 
-            await Task.WhenAll(t1, t2);
+            var t3 = StartProcessingMessageQueue(queue, cts.Token);
+
+            await Task.WhenAll(t1, t2, t3);
         }
 
-        private static Task Handle(string message, IDictionary<string, string> props, CancellationToken cancellationToken)
+        private static async Task StartProcessingMessageQueue(IMessageQueueConsumer messageQueue, CancellationToken cancellationToken)
         {
-            // Console.WriteLine($"Message: {message}");
-
-            if (!props.TryGetValue("Type", out var messageType))
+            while (!cancellationToken.IsCancellationRequested)
             {
-                Console.WriteLine("Unknown message received!");
-                return Task.CompletedTask;
-            }
+                if (!messageQueue.TryGet(out var message))
+                {
+                    Console.WriteLine("--------------------------");
+                    await Task.Delay(5000, cancellationToken);
+                    continue;
+                }
 
-            if (messageType.Equals(typeof(MarketDataEvent).Name))
-            {
-                var marketData = JsonSerializer.Deserialize<MarketDataEvent>(message);
-                Console.WriteLine($"Market Data: {marketData}");
-                return Task.CompletedTask;
+                Console.WriteLine($"{message}");
             }
-
-            if (messageType.Equals(typeof(TradeEvent).Name))
-            {
-                var trade = JsonSerializer.Deserialize<TradeEvent>(message);
-                Console.WriteLine($"Trade: {trade}");
-                return Task.CompletedTask;
-            }
-
-            Console.WriteLine($"Unknown message type received: {messageType}");
-            return Task.CompletedTask;
         }
     }
 }

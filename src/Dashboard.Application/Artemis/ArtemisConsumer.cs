@@ -23,7 +23,7 @@ namespace Dashboard.Application.Artemis
 
         public async Task StartConsume(
             string topic, 
-            Func<string, IDictionary<string, string>, CancellationToken, Task> handler,
+            Func<string, IDictionary<string, string>, CancellationToken, ValueTask> handler,
             CancellationToken cancellationToken)
         {
             // TODO: not thread safe!
